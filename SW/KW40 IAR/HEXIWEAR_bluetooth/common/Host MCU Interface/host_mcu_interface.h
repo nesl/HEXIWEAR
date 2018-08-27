@@ -97,7 +97,10 @@ typedef enum
     packetType_notification  = 32,          /**< Notifications */
     
     packetType_buildVersion  = 33,          /**< Build version */
-    
+
+    packetType_messageIn          = 116,       /**< Message Service: Input */
+    packetType_messageOut         = 117,       /**< Message Service: Output */
+        
     packetType_OK            = 255,         /**< OK Packet */
 }
 hostInterface_packetType_t;

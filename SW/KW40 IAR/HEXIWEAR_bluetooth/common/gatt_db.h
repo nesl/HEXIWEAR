@@ -109,5 +109,16 @@ PRIMARY_SERVICE(service_appMode, gBleCustom_AppModeService_d)
         VALUE(value_appMode, gBleCustom_AppModeUUID_d, gPermissionFlagReadable_c | gPermissionFlagReadWithAuthentication_c, gBleCustom_AppModeLength_d, 0x00)
 //        DESCRIPTOR(desc_appMode, gBleSig_CharUserDescriptor_d, (gPermissionFlagReadable_c), 8, "App Mode")
         CCCD(cccd_appMode)
+
+
+PRIMARY_SERVICE(service_message, gBleCustom_MessageService_d)
+    CHARACTERISTIC(char_messageIn, gBleCustom_MessageInUUID_d, (gGattCharPropWrite_c | gGattCharPropRead_c))
+        VALUE(value_messageIn, gBleCustom_MessageInUUID_d, (gPermissionFlagReadable_c | gPermissionFlagWritable_c), gBleCustom_MessageInLength_d, 0x00, 0x00, 0x00)
+       DESCRIPTOR(desc_messageIn, gBleSig_CharUserDescriptor_d, (gPermissionFlagReadable_c | gPermissionFlagWritable_c), 13, "Message Write")
             
+    CHARACTERISTIC(char_messageOut, gBleCustom_MessageOutUUID_d, (gGattCharPropNotify_c | gGattCharPropRead_c))
+        VALUE(value_messageOut, gBleCustom_MessageOutUUID_d, (gPermissionFlagReadable_c), gBleCustom_MessageOutLength_d, 0x00, 0x00, 0x00)
+        DESCRIPTOR(desc_messageOut, gBleSig_CharUserDescriptor_d, (gPermissionFlagReadable_c), 12, "Message Read")
+        CCCD(cccd_messageOut)
+                        
             

@@ -72,6 +72,7 @@
 #include "weather_service.h"
 #include "health_service.h"
 #include "alert_service.h"
+#include "message_service.h"
 
 #include "client_ancs.h"
 #include "ApplMain.h"
@@ -212,7 +213,7 @@ static disConfig_t      disServiceConfig    = {service_device_info};
 static otapClientConfig_t otapServiceConfig = {service_otap};
 
 static uint16_t otapWriteNotifHandles[]     = {value_otap_control_point, value_otap_data};
-static uint16_t writeNotifHandles[]         = {value_alertIn};
+static uint16_t writeNotifHandles[]         = {value_alertIn, value_messageIn};
 
 /* Application specific data*/
 static bool_t mContactStatus = TRUE;
@@ -439,25 +440,25 @@ static void BleApp_ReadFwImagProps(void)
         FLib_MemCpy((uint8_t *) currentImageVerKW40, (uint8_t *) gHardwareParameters.imageVersionKW40, gOtap_ImageVersionFieldSize_c);
     }
     
-    if(deviceState != deviceState_watch)
-    {
-        if(deviceState == deviceState_otapStartedMK64)
-        {
-            imgId  = (uint8_t *)imageIdMK64;
-            imgVer = (uint8_t *)currentImageVerMK64;
-        }
-        else if(deviceState == deviceState_otapStartedKW40)
-        {
-            imgId  = (uint8_t *)imageIdKW40;
-            imgVer = (uint8_t *)currentImageVerKW40;
-        }
+    // if(deviceState != deviceState_watch)
+    // {
+    //     if(deviceState == deviceState_otapStartedMK64)
+    //     {
+    //         imgId  = (uint8_t *)imageIdMK64;
+    //         imgVer = (uint8_t *)currentImageVerMK64;
+    //     }
+    //     else if(deviceState == deviceState_otapStartedKW40)
+    //     {
+    //         imgId  = (uint8_t *)imageIdKW40;
+    //         imgVer = (uint8_t *)currentImageVerKW40;
+    //     }
         
-        // Set current image id base on current device state.
-        FLib_MemCpy((uint8_t *) otapClientData.currentImgId, (uint8_t *) imgId, gOtap_ImageIdFieldSize_c);
+    //     // Set current image id base on current device state.
+    //     FLib_MemCpy((uint8_t *) otapClientData.currentImgId, (uint8_t *) imgId, gOtap_ImageIdFieldSize_c);
         
-        // Set current image version.
-        FLib_MemCpy((uint8_t *) otapClientData.currentImgVer, (uint8_t *) imgVer, gOtap_ImageVersionFieldSize_c);
-    }
+    //     // Set current image version.
+    //     FLib_MemCpy((uint8_t *) otapClientData.currentImgVer, (uint8_t *) imgVer, gOtap_ImageVersionFieldSize_c);
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -493,16 +494,16 @@ void BleApp_Init(void)
         
     // If device state is "deviceState_otapCompleted" or "deviceState_otapFailed",
     // set corresponding packet which will be sent through Host Interface and go to "deviceState_watch".
-    if(deviceState == deviceState_otapCompleted)
-    {
-        hostInterface_packet.type = packetType_otapCompleted;
-        deviceState = deviceState_watch;
-    }
-    else if(deviceState == deviceState_otapFailed)
-    {
-        hostInterface_packet.type = packetType_otapFailed;
-        deviceState = deviceState_watch;
-    }
+    // if(deviceState == deviceState_otapCompleted)
+    // {
+    //     hostInterface_packet.type = packetType_otapCompleted;
+    //     deviceState = deviceState_watch;
+    // }
+    // else if(deviceState == deviceState_otapFailed)
+    // {
+    //     hostInterface_packet.type = packetType_otapFailed;
+    //     deviceState = deviceState_watch;
+    // }
    
         
     // Host interface should be active only in "deviceState_watch" state.
@@ -526,11 +527,11 @@ void BleApp_Init(void)
     // If this condition met device is in some of "otapStart" modes.
     // Write "otapFailed" state to FLASH to "protect" from unregular reset.
     // If otap success this state will be overwritten.
-    else if(deviceState != deviceState_watch)
-    {
-        gHardwareParameters.deviceState = (uint8_t) deviceState_otapFailed;
-        NV_WriteHWParameters(&gHardwareParameters);
-    }
+    // else if(deviceState != deviceState_watch)
+    // {
+    //     gHardwareParameters.deviceState = (uint8_t) deviceState_otapFailed;
+    //     NV_WriteHWParameters(&gHardwareParameters);
+    // }
     
     // TSI should be active only in "deviceState_watch" state.
     if(deviceState == deviceState_watch)
@@ -690,11 +691,12 @@ static void Ble_StartServices(void)
         Wes_Start();
         Hes_Start();
         Als_Start();
+        Msg_Start();
     }
-    else
-    {
-        OtapCS_Start(&otapServiceConfig);
-    }
+    // else
+    // {
+    //     OtapCS_Start(&otapServiceConfig);
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -715,11 +717,12 @@ static void Ble_Subscribe(deviceId_t deviceId)
         Wes_Subscribe(deviceId);
         Hes_Subscribe(deviceId);
         Als_Subscribe(deviceId);
+        Msg_Subscribe(deviceId);
     }
-    else
-    {
-        OtapCS_Subscribe(deviceId);
-    }
+    // else
+    // {
+    //     OtapCS_Subscribe(deviceId);
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -738,11 +741,12 @@ static void Ble_Unsubscribe(void)
         Wes_Unsubscribe();
         Hes_Unsubscribe();
         Als_Unsubscribe();
+        Msg_Unsubscribe();
     }
-    else
-    {
-        OtapCS_Unsubscribe();
-    }
+    // else
+    // {
+    //     OtapCS_Unsubscribe();
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -806,11 +810,11 @@ static void BleApp_Config()
         GattServer_RegisterHandlesForWriteNotifications (sizeof(writeNotifHandles)/sizeof(writeNotifHandles[0]),
                                                          writeNotifHandles);
     }
-    else
-    {
-        GattServer_RegisterHandlesForWriteNotifications (sizeof(otapWriteNotifHandles)/sizeof(otapWriteNotifHandles[0]),
-                                                         otapWriteNotifHandles);
-    }
+    // else
+    // {
+    //     GattServer_RegisterHandlesForWriteNotifications (sizeof(otapWriteNotifHandles)/sizeof(otapWriteNotifHandles[0]),
+    //                                                      otapWriteNotifHandles);
+    // }
         
     /* Register security requirements */
 #if gUseServiceSecurity_d
@@ -829,11 +833,11 @@ static void BleApp_Config()
         gAppAdvertisingData.cNumAdStructures = 2;
         gAppAdvertisingData.aAdStructures = (void *)advScanStruct_watch;
     }
-    else
-    {
-        gAppAdvertisingData.cNumAdStructures = 3;
-        gAppAdvertisingData.aAdStructures = (void *)advScanStruct_otap;
-    }
+    // else
+    // {
+    //     gAppAdvertisingData.cNumAdStructures = 3;
+    //     gAppAdvertisingData.aAdStructures = (void *)advScanStruct_otap;
+    // }
     
     Gap_SetAdvertisingData(&gAppAdvertisingData, &gAppScanRspData);
 
@@ -884,12 +888,12 @@ static void BleApp_Config()
         // Set gpio pin as wakeup source.
         POWER_SYS_SetWakeupPin(kPowerManagerWakeupPin8, kLlwuExternalPinChangeDetect, &bleApp_wakeUpPin);
     }
-    else
-    {
-    	// In OTAP mode device doesn't go to sleep.
-        bleApp_intPin.config.interrupt = kPortIntDisabled;
-        GPIO_DRV_InputPinInit(&bleApp_intPin);
-    }
+    // else
+    // {
+    // 	// In OTAP mode device doesn't go to sleep.
+    //     bleApp_intPin.config.interrupt = kPortIntDisabled;
+    //     GPIO_DRV_InputPinInit(&bleApp_intPin);
+    // }
 #else
     bleApp_intPin.config.interrupt = kPortIntDisabled;
     GPIO_DRV_InputPinInit(&bleApp_intPin);
@@ -933,11 +937,11 @@ static void BleApp_SendConnUpdateReq(deviceId_t peerDeviceId)
         L2ca_UpdateConnectionParameters(peerDeviceId, gWatchConnMinInterval_c, gWatchConnMaxInterval_c,
                                                         gConnSlaveLatency_c, gConnTimeoutMultiplier_c, 0, 0);
     }
-    else
-    {
-        L2ca_UpdateConnectionParameters(peerDeviceId, gOtapConnMinInterval_c, gOtapConnMaxInterval_c,
-                                                        gConnSlaveLatency_c, gConnTimeoutMultiplier_c, 0, 0);
-    }
+    // else
+    // {
+    //     L2ca_UpdateConnectionParameters(peerDeviceId, gOtapConnMinInterval_c, gOtapConnMaxInterval_c,
+    //                                                     gConnSlaveLatency_c, gConnTimeoutMultiplier_c, 0, 0);
+    // }
 }
         
 /////////////////////////////////////////////////////////////////////////////////////
@@ -1051,11 +1055,11 @@ static void BleApp_ConnectionCallback (deviceId_t peerDeviceId, gapConnectionEve
                             Gap_SendSlaveSecurityRequest(peerDeviceId, gBondingSupported_d, gSecurityMode_1_Level_3_c);
                         }
                         // If device state is some of "OTAP states", and remote device is not bonded, just stop OTAP and reset device.
-                        else
-                        {
-                            OtapClient_Fail();
-                            ResetMCU();
-                        }
+                        // else
+                        // {
+                        //     OtapClient_Fail();
+                        //     ResetMCU();
+                        // }
                     }
                 }
                 #endif            
@@ -1067,10 +1071,10 @@ static void BleApp_ConnectionCallback (deviceId_t peerDeviceId, gapConnectionEve
                 if(deviceState != deviceState_watch)
                 {
                     /* Device does not need to sleep until some information is exchanged with the peer. */
-                #if (cPWR_UsePowerDownMode)    
-                    PWR_DisallowDeviceToSleep();
-                #endif
-                    OtapClient_HandleConnectionEvent (peerDeviceId);
+                // #if (cPWR_UsePowerDownMode)    
+                //     PWR_DisallowDeviceToSleep();
+                // #endif
+                //     OtapClient_HandleConnectionEvent (peerDeviceId);
                 }
                 else
                 {
@@ -1114,8 +1118,8 @@ static void BleApp_ConnectionCallback (deviceId_t peerDeviceId, gapConnectionEve
             // If disconnect event is detected during OTAP, then declare OTAP process as unsuccessful, and reset device.
             if(deviceState != deviceState_watch)
             {
-                OtapClient_Fail();
-                ResetMCU();
+                // OtapClient_Fail();
+                // ResetMCU();
             }
             // Send link state to host MCU.
             else
@@ -1247,11 +1251,11 @@ static void BleApp_ConnectionCallback (deviceId_t peerDeviceId, gapConnectionEve
                 Gap_AcceptPairingRequest(peerDeviceId, &gPairingParameters);
             }
             // Device must be paired and bonded before start OTAP process.
-            else
-            {
-                OtapClient_Fail();
-                ResetMCU();
-            }
+            // else
+            // {
+            //     OtapClient_Fail();
+            //     ResetMCU();
+            // }
         }    
         break;
         
@@ -1392,40 +1396,40 @@ static void BleApp_GattServerCallback (deviceId_t deviceId, gattServerEvent_t* p
 
 static void BleApp_CccdWritten (deviceId_t deviceId, uint16_t handle, gattCccdFlags_t cccd)
 {
-    otapCommand_t otapCommand;
-    bleResult_t   bleResult;
+    // otapCommand_t otapCommand;
+    // bleResult_t   bleResult;
     
-    /*! Check if the OTAP control point CCCD was written. */
-    if (
-         (handle == cccd_otap_control_point) &&
-         (deviceState != deviceState_watch)
-        )
-    {
-        /*! If the state is Idle try to send a New Image Info Request Command to the OTAP Server. */
-        otapCommand.cmdId = gOtapCmdIdNewImageInfoRequest_c;
-        FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageId,
-                     (uint8_t*)imageIdAll,
-                     gOtap_ImageIdFieldSize_c);
-        FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageVersion,
-                     (uint8_t*)otapClientData.currentImgVer,
-                     gOtap_ImageVersionFieldSize_c);
+    // /*! Check if the OTAP control point CCCD was written. */
+    // if (
+    //      (handle == cccd_otap_control_point) &&
+    //      (deviceState != deviceState_watch)
+    //     )
+    // {
+    //     /*! If the state is Idle try to send a New Image Info Request Command to the OTAP Server. */
+    //     otapCommand.cmdId = gOtapCmdIdNewImageInfoRequest_c;
+    //     FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageId,
+    //                  (uint8_t*)imageIdAll,
+    //                  gOtap_ImageIdFieldSize_c);
+    //     FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageVersion,
+    //                  (uint8_t*)otapClientData.currentImgVer,
+    //                  gOtap_ImageVersionFieldSize_c);
         
-        bleResult = OtapCS_SendCommandToOtapServer (service_otap,
-                                                    (void*)(&otapCommand),
-                                                    cmdIdToCmdLengthTable[gOtapCmdIdNewImageInfoRequest_c]);
-        if (gBleSuccess_c == bleResult)
-        {
-            otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNewImageInfoRequest_c;
-            otapClientData.serverWrittenCccd = TRUE;
-        }
-        else
-        {
-            /*! A BLE error has occured - Disconnect */
-            Gap_Disconnect (deviceId);
-            OtapClient_Fail();
-            ResetMCU();
-        }
-    }
+    //     bleResult = OtapCS_SendCommandToOtapServer (service_otap,
+    //                                                 (void*)(&otapCommand),
+    //                                                 cmdIdToCmdLengthTable[gOtapCmdIdNewImageInfoRequest_c]);
+    //     if (gBleSuccess_c == bleResult)
+    //     {
+    //         otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNewImageInfoRequest_c;
+    //         otapClientData.serverWrittenCccd = TRUE;
+    //     }
+    //     else
+    //     {
+    //         /*! A BLE error has occured - Disconnect */
+    //         Gap_Disconnect (deviceId);
+    //         OtapClient_Fail();
+    //         ResetMCU();
+    //     }
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -1480,90 +1484,124 @@ static void BleApp_AttributeWritten(deviceId_t deviceId, uint16_t handle, uint16
         }
     }
     else if(
-             (handle == value_otap_control_point) &&
-             (deviceState != deviceState_watch)
-           )
+      (handle == value_messageIn) &&
+      (deviceState == deviceState_watch)
+    )
     {
-        // Handle all OTAP Server to Client Commands Here.
-        switch(((otapCommand_t*)pValue)->cmdId)
-        {
-        case gOtapCmdIdNewImageNotification_c:
-            bleResult = GattServer_SendAttributeWrittenStatus (deviceId,
-                                                               value_otap_control_point,
-                                                               gAttErrCodeNoError_c);
-            if (gBleSuccess_c == bleResult)
-            {
-                OtapClient_HandleNewImageNotification (deviceId,
-                                                       length,
-                                                       pValue);
-            }
-            else
-            {
-                // A BLE error has occurred - Disconnect.
-                Gap_Disconnect (deviceId);
-                OtapClient_Fail();
-                ResetMCU();
-            }
-            break;
-        case gOtapCmdIdNewImageInfoResponse_c:
-            bleResult = GattServer_SendAttributeWrittenStatus (deviceId,
-                                                               value_otap_control_point,
-                                                               gAttErrCodeNoError_c);
-            if (gBleSuccess_c == bleResult)
-            {
-                OtapClient_HandleNewImageInfoResponse (deviceId,
-                                                       length,
-                                                       pValue);
-            }
-            else
-            {
-                // A BLE error has occurred - Disconnect.
-                Gap_Disconnect (deviceId);
-                OtapClient_Fail();
-                ResetMCU();
-            }
-            break;
-        case gOtapCmdIdErrorNotification_c:
-            bleResult = GattServer_SendAttributeWrittenStatus (deviceId,
-                                                               value_otap_control_point,
-                                                               gAttErrCodeNoError_c);
-            if (gBleSuccess_c == bleResult)
-            {
-                OtapClient_HandleErrorNotification (deviceId,
-                                                    length,
-                                                    pValue);
-            }
-            else
-            {
-                // A BLE error has occurred - Disconnect.
-                Gap_Disconnect (deviceId);
-                OtapClient_Fail();
-                ResetMCU();
-            }
-            break;
+        // if(length == gBleCustom_MessageInLength_d)
+        // {
+            osaStatus_t eventWaitStatus;
+            uint8_t     attWriteStatus;
+            event_flags_t setFlags;
             
-        default:
-            otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
-            otapCommand.cmd.errNotif.cmdId = pValue[0];
-            otapCommand.cmd.errNotif.errStatus = gOtapStatusUnexpectedCommand_c;
-    
-            bleResult = OtapCS_SendCommandToOtapServer (service_otap,
-                                                        (void*)(&otapCommand),
-                                                        cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
-            if (gBleSuccess_c == bleResult)
+            // Send corresponding data to host MCU.
+            Msg_HandleInMessage(pValue);
+            
+        #if gHostInterface_RxConfirmationEnable //..........................................
+            HostInterface_EventConfirmAttPacketClear();
+            
+            // Wait for confirmation packet from host MCU.
+            eventWaitStatus = HostInterface_EventConfirmAttPacketWait();
+            
+            if(eventWaitStatus != osaStatus_Success)
             {
-                otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
+                attWriteStatus = gAttErrCodeUnlikelyError_c;
             }
             else
+        #endif //...........................................................................                
             {
-                // A BLE error has occurred - Disconnect.
-                Gap_Disconnect (deviceId);
-                OtapClient_Fail();
-                ResetMCU();
+                attWriteStatus = gAttErrCodeNoError_c;
             }
-            break;
-        };
+            
+            // Responds to an intercepted attribute write operation.
+            GattServer_SendAttributeWrittenStatus(deviceId, handle, attWriteStatus);
+        // }
     }
+    // else if(
+    //          (handle == value_otap_control_point) &&
+    //          (deviceState != deviceState_watch)
+    //        )
+    // {
+    //     // Handle all OTAP Server to Client Commands Here.
+    //     switch(((otapCommand_t*)pValue)->cmdId)
+    //     {
+    //     case gOtapCmdIdNewImageNotification_c:
+    //         bleResult = GattServer_SendAttributeWrittenStatus (deviceId,
+    //                                                            value_otap_control_point,
+    //                                                            gAttErrCodeNoError_c);
+    //         if (gBleSuccess_c == bleResult)
+    //         {
+    //             OtapClient_HandleNewImageNotification (deviceId,
+    //                                                    length,
+    //                                                    pValue);
+    //         }
+    //         else
+    //         {
+    //             // A BLE error has occurred - Disconnect.
+    //             Gap_Disconnect (deviceId);
+    //             OtapClient_Fail();
+    //             ResetMCU();
+    //         }
+    //         break;
+    //     case gOtapCmdIdNewImageInfoResponse_c:
+    //         bleResult = GattServer_SendAttributeWrittenStatus (deviceId,
+    //                                                            value_otap_control_point,
+    //                                                            gAttErrCodeNoError_c);
+    //         if (gBleSuccess_c == bleResult)
+    //         {
+    //             OtapClient_HandleNewImageInfoResponse (deviceId,
+    //                                                    length,
+    //                                                    pValue);
+    //         }
+    //         else
+    //         {
+    //             // A BLE error has occurred - Disconnect.
+    //             Gap_Disconnect (deviceId);
+    //             OtapClient_Fail();
+    //             ResetMCU();
+    //         }
+    //         break;
+    //     case gOtapCmdIdErrorNotification_c:
+    //         bleResult = GattServer_SendAttributeWrittenStatus (deviceId,
+    //                                                            value_otap_control_point,
+    //                                                            gAttErrCodeNoError_c);
+    //         if (gBleSuccess_c == bleResult)
+    //         {
+    //             OtapClient_HandleErrorNotification (deviceId,
+    //                                                 length,
+    //                                                 pValue);
+    //         }
+    //         else
+    //         {
+    //             // A BLE error has occurred - Disconnect.
+    //             Gap_Disconnect (deviceId);
+    //             OtapClient_Fail();
+    //             ResetMCU();
+    //         }
+    //         break;
+            
+    //     default:
+    //         otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
+    //         otapCommand.cmd.errNotif.cmdId = pValue[0];
+    //         otapCommand.cmd.errNotif.errStatus = gOtapStatusUnexpectedCommand_c;
+    
+    //         bleResult = OtapCS_SendCommandToOtapServer (service_otap,
+    //                                                     (void*)(&otapCommand),
+    //                                                     cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
+    //         if (gBleSuccess_c == bleResult)
+    //         {
+    //             otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
+    //         }
+    //         else
+    //         {
+    //             // A BLE error has occurred - Disconnect.
+    //             Gap_Disconnect (deviceId);
+    //             OtapClient_Fail();
+    //             ResetMCU();
+    //         }
+    //         break;
+    //     };
+    // }
     else
     {
         // A GATT Server is trying to GATT Write an unknown attribute value.
@@ -1591,67 +1629,67 @@ static void BleApp_AttributeWrittenWithoutResponse (deviceId_t deviceId,
                                                     uint16_t length,
                                                     uint8_t* pValue)
 {
-    otapCommand_t otapCommand;
-    otapStatus_t otapStatus = gOtapStatusSuccess_c;
-    bleResult_t bleResult;
+    // otapCommand_t otapCommand;
+    // otapStatus_t otapStatus = gOtapStatusSuccess_c;
+    // bleResult_t bleResult;
     
-    // Only the OTAP Data attribute is expected to be written using the
-    // ATT Write Without Response Command. 
-    if (
-        (handle == value_otap_data) &&
-        (deviceState != deviceState_watch)
-       )
-    {
-        if (otapClientData.state == mOtapClientStateDownloadingImage_c)
-        {
-            if (otapClientData.transferMethod == gOtapTransferMethodAtt_c)
-            {
-                if (((otapCommand_t*)pValue)->cmdId == gOtapCmdIdImageChunk_c)
-                {
-                    OtapClient_HandleDataChunk (deviceId,
-                                                length,
-                                                pValue);
-                }
-                else
-                {
-                    // If the OTAP Client received an unexpected command on the data channel send an error to the OTAP Server.
-                    otapStatus = gOtapStatusUnexpectedCmdOnDataChannel_c;
-                }
-            }
-            else
-            {
-                // If the OTAP Client is not expecting image file chunks via ATT send an error to the OTAP Server.
-                otapStatus = gOtapStatusUnexpectedTransferMethod_c;
-            }
-        }
-        else
-        {
-            // If the OTAP Client is not expecting image file chunks send an error to the OTAP Server.
-            otapStatus = gOtapStatusImageDataNotExpected_c;
-        }
+    // // Only the OTAP Data attribute is expected to be written using the
+    // // ATT Write Without Response Command. 
+    // if (
+    //     (handle == value_otap_data) &&
+    //     (deviceState != deviceState_watch)
+    //    )
+    // {
+    //     if (otapClientData.state == mOtapClientStateDownloadingImage_c)
+    //     {
+    //         if (otapClientData.transferMethod == gOtapTransferMethodAtt_c)
+    //         {
+    //             if (((otapCommand_t*)pValue)->cmdId == gOtapCmdIdImageChunk_c)
+    //             {
+    //                 OtapClient_HandleDataChunk (deviceId,
+    //                                             length,
+    //                                             pValue);
+    //             }
+    //             else
+    //             {
+    //                 // If the OTAP Client received an unexpected command on the data channel send an error to the OTAP Server.
+    //                 otapStatus = gOtapStatusUnexpectedCmdOnDataChannel_c;
+    //             }
+    //         }
+    //         else
+    //         {
+    //             // If the OTAP Client is not expecting image file chunks via ATT send an error to the OTAP Server.
+    //             otapStatus = gOtapStatusUnexpectedTransferMethod_c;
+    //         }
+    //     }
+    //     else
+    //     {
+    //         // If the OTAP Client is not expecting image file chunks send an error to the OTAP Server.
+    //         otapStatus = gOtapStatusImageDataNotExpected_c;
+    //     }
         
-        if (otapStatus != gOtapStatusSuccess_c)
-        {
-            otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
-            otapCommand.cmd.errNotif.cmdId = pValue[0];
-            otapCommand.cmd.errNotif.errStatus = otapStatus;
+    //     if (otapStatus != gOtapStatusSuccess_c)
+    //     {
+    //         otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
+    //         otapCommand.cmd.errNotif.cmdId = pValue[0];
+    //         otapCommand.cmd.errNotif.errStatus = otapStatus;
     
-            bleResult = OtapCS_SendCommandToOtapServer (service_otap,
-                                                        (void*)(&otapCommand),
-                                                        cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
-            if (gBleSuccess_c == bleResult)
-            {
-                otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
-            }
-            else
-            {
-                // A BLE error has occurred - Disconnect.
-                Gap_Disconnect (deviceId);
-                OtapClient_Fail();
-                ResetMCU();                
-            }
-        }
-    }
+    //         bleResult = OtapCS_SendCommandToOtapServer (service_otap,
+    //                                                     (void*)(&otapCommand),
+    //                                                     cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
+    //         if (gBleSuccess_c == bleResult)
+    //         {
+    //             otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
+    //         }
+    //         else
+    //         {
+    //             // A BLE error has occurred - Disconnect.
+    //             Gap_Disconnect (deviceId);
+    //             OtapClient_Fail();
+    //             ResetMCU();                
+    //         }
+    //     }
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -1724,376 +1762,376 @@ static void BleApp_HandleValueConfirmation (deviceId_t deviceId)
 
 static void OtapClient_HandleDataChunk (deviceId_t deviceId, uint16_t length, uint8_t* pData)
 {
-    otapCommand_t otapCommand;
-    bleResult_t   bleResult;
-    otapStatus_t otapStatus = gOtapStatusSuccess_c;
+    // otapCommand_t otapCommand;
+    // bleResult_t   bleResult;
+    // otapStatus_t otapStatus = gOtapStatusSuccess_c;
     
-    otapCmdImgChunkCoc_t* pDataChunk = (otapCmdImgChunkCoc_t*)(&((otapCommand_t*)pData)->cmd); // Use the CoC Data Chunk type but observe the length.
-    uint16_t dataLen = length - gOtap_CmdIdFieldSize_c - gOtap_ChunkSeqNumberSize_c;           // Calculate length.
+    // otapCmdImgChunkCoc_t* pDataChunk = (otapCmdImgChunkCoc_t*)(&((otapCommand_t*)pData)->cmd); // Use the CoC Data Chunk type but observe the length.
+    // uint16_t dataLen = length - gOtap_CmdIdFieldSize_c - gOtap_ChunkSeqNumberSize_c;           // Calculate length.
     
-    // Variables for the local image file parsing state machine.
-    static uint32_t currentImgElemRcvdLen = 0;      /*!< Contains the number of received bytes for th current image element (header or othe sub element).
-                                                    *   This is needed because the */
-    static bleOtaImageFileHeader_t imgFileHeader;   /*!< Saved image file header. */
-    static uint32_t elementEnd = 0;                 /*!< Current image file element expected end. */
-    static subElementHeader_t subElemHdr;
-    otaResult_t otaStatus;
+    // // Variables for the local image file parsing state machine.
+    // static uint32_t currentImgElemRcvdLen = 0;      /*!< Contains the number of received bytes for th current image element (header or othe sub element).
+    //                                                 *   This is needed because the */
+    // static bleOtaImageFileHeader_t imgFileHeader;   /*!< Saved image file header. */
+    // static uint32_t elementEnd = 0;                 /*!< Current image file element expected end. */
+    // static subElementHeader_t subElemHdr;
+    // otaResult_t otaStatus;
     
-    if (deviceId == otapClientData.peerOtapServer)
-    {
-        /* Check if the command length is as expected. */
-        if ((length > (gOtap_CmdIdFieldSize_c + gOtap_ChunkSeqNumberSize_c)) &&
-            (((otapClientData.transferMethod == gOtapTransferMethodAtt_c) && (length <= cmdIdToCmdLengthTable[gOtapCmdIdImageChunk_c])) ||
-             ((otapClientData.transferMethod == gOtapTransferMethodL2capCoC_c) && (length <= gOtapCmdImageChunkCocLength_c))
-            )
-           )
-        {
-            /* Check if the chunk (sequence number) is as expected */
-            if ((pDataChunk->seqNumber == otapClientData.chunkSeqNum) &&
-                (pDataChunk->seqNumber < otapClientData.totalBlockChunks))
-            {
-                /*  Check if the data length is as expected. */
-                if (((dataLen == otapClientData.chunkSize) && ((pDataChunk->seqNumber < (otapClientData.totalBlockChunks - 1)) || (otapClientData.totalBlockSize % otapClientData.chunkSize == 0))) ||
-                    ((dataLen < otapClientData.chunkSize) && (pDataChunk->seqNumber == (otapClientData.totalBlockChunks - 1)) && (dataLen == otapClientData.totalBlockSize % otapClientData.chunkSize))
-                   )
-                {
-                    /* Do more checks here if necessary. */
-                }
-                else
-                {
-                    otapStatus = gOtapStatusUnexpectedDataLength_c;
-                }
-            }
-            else
-            {
-                otapStatus = gOtapStatusUnexpectedSequenceNumber_c;
-            }
-        }
-        else
-        {
-            otapStatus = gOtapStatusInvalidCommandLength_c;
-        }
-    }
-    else
-    {
-        otapStatus = gOtapStatusUnexpectedOtapPeer_c;
-    }
+    // if (deviceId == otapClientData.peerOtapServer)
+    // {
+    //     /* Check if the command length is as expected. */
+    //     if ((length > (gOtap_CmdIdFieldSize_c + gOtap_ChunkSeqNumberSize_c)) &&
+    //         (((otapClientData.transferMethod == gOtapTransferMethodAtt_c) && (length <= cmdIdToCmdLengthTable[gOtapCmdIdImageChunk_c])) ||
+    //          ((otapClientData.transferMethod == gOtapTransferMethodL2capCoC_c) && (length <= gOtapCmdImageChunkCocLength_c))
+    //         )
+    //        )
+    //     {
+    //         /* Check if the chunk (sequence number) is as expected */
+    //         if ((pDataChunk->seqNumber == otapClientData.chunkSeqNum) &&
+    //             (pDataChunk->seqNumber < otapClientData.totalBlockChunks))
+    //         {
+    //             /*  Check if the data length is as expected. */
+    //             if (((dataLen == otapClientData.chunkSize) && ((pDataChunk->seqNumber < (otapClientData.totalBlockChunks - 1)) || (otapClientData.totalBlockSize % otapClientData.chunkSize == 0))) ||
+    //                 ((dataLen < otapClientData.chunkSize) && (pDataChunk->seqNumber == (otapClientData.totalBlockChunks - 1)) && (dataLen == otapClientData.totalBlockSize % otapClientData.chunkSize))
+    //                )
+    //             {
+    //                 /* Do more checks here if necessary. */
+    //             }
+    //             else
+    //             {
+    //                 otapStatus = gOtapStatusUnexpectedDataLength_c;
+    //             }
+    //         }
+    //         else
+    //         {
+    //             otapStatus = gOtapStatusUnexpectedSequenceNumber_c;
+    //         }
+    //     }
+    //     else
+    //     {
+    //         otapStatus = gOtapStatusInvalidCommandLength_c;
+    //     }
+    // }
+    // else
+    // {
+    //     otapStatus = gOtapStatusUnexpectedOtapPeer_c;
+    // }
 
-    /*! If all checks were successful then parse the current data chunk, else send an error notification. */
-    if (otapStatus == gOtapStatusSuccess_c)
-    {
-        pData = (uint8_t*)(&pDataChunk->data);
+    // /*! If all checks were successful then parse the current data chunk, else send an error notification. */
+    // if (otapStatus == gOtapStatusSuccess_c)
+    // {
+    //     pData = (uint8_t*)(&pDataChunk->data);
         
-        /* If the Current position is 0 then reset the received length for the current image element
-         * and the current image CRC to the initialization value which is 0.
-         * The current position should be 0 only at the start of the image file transfer. */
-        if (otapClientData.currentPos == 0)
-        {
-            currentImgElemRcvdLen = 0; 
-            otapClientData.imgComputedCrc = 0;
-        }
+    //     /* If the Current position is 0 then reset the received length for the current image element
+    //      * and the current image CRC to the initialization value which is 0.
+    //      * The current position should be 0 only at the start of the image file transfer. */
+    //     if (otapClientData.currentPos == 0)
+    //     {
+    //         currentImgElemRcvdLen = 0; 
+    //         otapClientData.imgComputedCrc = 0;
+    //     }
         
-        /* Parse all the bytes in the data payload. */
-        while (dataLen)
-        {
-            /* Wait for the header to arrive and check it's contents
-             * then handle the elements of the image. */
-            if (otapClientData.currentPos < sizeof(bleOtaImageFileHeader_t))
-            {
-                if ((otapClientData.currentPos + dataLen) >= sizeof(bleOtaImageFileHeader_t))
-                {
-                    uint16_t residualHeaderLen = sizeof(bleOtaImageFileHeader_t) - otapClientData.currentPos;
+    //     /* Parse all the bytes in the data payload. */
+    //     while (dataLen)
+    //     {
+    //         /* Wait for the header to arrive and check it's contents
+    //          * then handle the elements of the image. */
+    //         if (otapClientData.currentPos < sizeof(bleOtaImageFileHeader_t))
+    //         {
+    //             if ((otapClientData.currentPos + dataLen) >= sizeof(bleOtaImageFileHeader_t))
+    //             {
+    //                 uint16_t residualHeaderLen = sizeof(bleOtaImageFileHeader_t) - otapClientData.currentPos;
                     
-                    /* There is enough information in the data payload to complete the header. */
-                    FLib_MemCpy ((uint8_t*)(&imgFileHeader) + otapClientData.currentPos, pData, residualHeaderLen);
-                    otapClientData.currentPos += residualHeaderLen;
-                    pData += residualHeaderLen;
-                    dataLen -= residualHeaderLen;
+    //                 /* There is enough information in the data payload to complete the header. */
+    //                 FLib_MemCpy ((uint8_t*)(&imgFileHeader) + otapClientData.currentPos, pData, residualHeaderLen);
+    //                 otapClientData.currentPos += residualHeaderLen;
+    //                 pData += residualHeaderLen;
+    //                 dataLen -= residualHeaderLen;
                     
-                    /* Check header contents, and if it is not valid return and error and reset the image download position. */
-                    otapStatus = OtapClient_IsImageFileHeaderValid (&imgFileHeader);
-                    if (otapStatus != gOtapStatusSuccess_c)
-                    {
-                        otapClientData.currentPos = 0;
-                        break;
-                    }
+    //                 /* Check header contents, and if it is not valid return and error and reset the image download position. */
+    //                 otapStatus = OtapClient_IsImageFileHeaderValid (&imgFileHeader);
+    //                 if (otapStatus != gOtapStatusSuccess_c)
+    //                 {
+    //                     otapClientData.currentPos = 0;
+    //                     break;
+    //                 }
                     
-                    /* If the header is valid then update the CRC over the header part of the image. */
-                    otapClientData.imgComputedCrc = OTA_CrcCompute ((uint8_t*)(&imgFileHeader),
-                                                                    sizeof(bleOtaImageFileHeader_t),
-                                                                    otapClientData.imgComputedCrc);
+    //                 /* If the header is valid then update the CRC over the header part of the image. */
+    //                 otapClientData.imgComputedCrc = OTA_CrcCompute ((uint8_t*)(&imgFileHeader),
+    //                                                                 sizeof(bleOtaImageFileHeader_t),
+    //                                                                 otapClientData.imgComputedCrc);
                     
-                    currentImgElemRcvdLen = 0;
+    //                 currentImgElemRcvdLen = 0;
                     
-                    /* If the remaining data length is not 0 then the loop will continue with the parsing of the next element. */
-                }
-                else
-                {
-                    /* Not enough data to complete the header.
-                     * Copy all the data into the temporary header and
-                     * increment the current image position. */
-                    FLib_MemCpy((uint8_t*)(&imgFileHeader) + otapClientData.currentPos, pData, dataLen);
-                    otapClientData.currentPos += dataLen;
-                    dataLen = 0;
-                }
-            }
-            else
-            {
-                /* The parsing has reached the sub-elements portion of the image. 
-                 * Wait for each sub-element tag to arrive or parse it if it is known. */
-                if (currentImgElemRcvdLen < sizeof(subElementHeader_t))
-                {
-                    if ((currentImgElemRcvdLen + dataLen) >= sizeof(subElementHeader_t))
-                    {
-                        uint16_t residualSubElemHdrLen = sizeof(subElementHeader_t) - currentImgElemRcvdLen;
+    //                 /* If the remaining data length is not 0 then the loop will continue with the parsing of the next element. */
+    //             }
+    //             else
+    //             {
+    //                 /* Not enough data to complete the header.
+    //                  * Copy all the data into the temporary header and
+    //                  * increment the current image position. */
+    //                 FLib_MemCpy((uint8_t*)(&imgFileHeader) + otapClientData.currentPos, pData, dataLen);
+    //                 otapClientData.currentPos += dataLen;
+    //                 dataLen = 0;
+    //             }
+    //         }
+    //         else
+    //         {
+    //             /* The parsing has reached the sub-elements portion of the image. 
+    //              * Wait for each sub-element tag to arrive or parse it if it is known. */
+    //             if (currentImgElemRcvdLen < sizeof(subElementHeader_t))
+    //             {
+    //                 if ((currentImgElemRcvdLen + dataLen) >= sizeof(subElementHeader_t))
+    //                 {
+    //                     uint16_t residualSubElemHdrLen = sizeof(subElementHeader_t) - currentImgElemRcvdLen;
                         
-                        /* There is enough information in the data payload to complete the sub-element header. */
-                        FLib_MemCpy ((uint8_t*)(&subElemHdr) + currentImgElemRcvdLen, pData, residualSubElemHdrLen);
-                        otapClientData.currentPos += residualSubElemHdrLen;
-                        currentImgElemRcvdLen += residualSubElemHdrLen;
-                        pData += residualSubElemHdrLen;
-                        dataLen -= residualSubElemHdrLen;
+    //                     /* There is enough information in the data payload to complete the sub-element header. */
+    //                     FLib_MemCpy ((uint8_t*)(&subElemHdr) + currentImgElemRcvdLen, pData, residualSubElemHdrLen);
+    //                     otapClientData.currentPos += residualSubElemHdrLen;
+    //                     currentImgElemRcvdLen += residualSubElemHdrLen;
+    //                     pData += residualSubElemHdrLen;
+    //                     dataLen -= residualSubElemHdrLen;
                         
-                        /* Update the CRC over the sub-element header only if it is not the CRC Sub-Element header. */
-                        if (subElemHdr.tagId != gBleOtaSubElemTagIdImageFileCrc_c)
-                        {
-                            otapClientData.imgComputedCrc = OTA_CrcCompute ((uint8_t*)(&subElemHdr),
-                                                                            sizeof(subElementHeader_t),
-                                                                            otapClientData.imgComputedCrc);
-                        }
+    //                     /* Update the CRC over the sub-element header only if it is not the CRC Sub-Element header. */
+    //                     if (subElemHdr.tagId != gBleOtaSubElemTagIdImageFileCrc_c)
+    //                     {
+    //                         otapClientData.imgComputedCrc = OTA_CrcCompute ((uint8_t*)(&subElemHdr),
+    //                                                                         sizeof(subElementHeader_t),
+    //                                                                         otapClientData.imgComputedCrc);
+    //                     }
                         
-                        elementEnd = otapClientData.currentPos + subElemHdr.dataLen;
+    //                     elementEnd = otapClientData.currentPos + subElemHdr.dataLen;
                         
-                        /* If the remaining data length is not 0 then the loop will
-                        continue with the parsing of the sub-element. */
-                    }
-                    else
-                    {
-                        /* Not enough data to complete the sub-element header.
-                         * Copy all the data into the temporary sub-element header
-                         * and increment the current image position. */
-                        FLib_MemCpy ((uint8_t*)(&subElemHdr) + currentImgElemRcvdLen, pData, dataLen);
-                        otapClientData.currentPos += dataLen;
-                        currentImgElemRcvdLen += dataLen;
-                        dataLen = 0;
-                    }
-                }
-                else
-                {
-                    uint32_t    elementChunkLength = 0;
+    //                     /* If the remaining data length is not 0 then the loop will
+    //                     continue with the parsing of the sub-element. */
+    //                 }
+    //                 else
+    //                 {
+    //                     /* Not enough data to complete the sub-element header.
+    //                      * Copy all the data into the temporary sub-element header
+    //                      * and increment the current image position. */
+    //                     FLib_MemCpy ((uint8_t*)(&subElemHdr) + currentImgElemRcvdLen, pData, dataLen);
+    //                     otapClientData.currentPos += dataLen;
+    //                     currentImgElemRcvdLen += dataLen;
+    //                     dataLen = 0;
+    //                 }
+    //             }
+    //             else
+    //             {
+    //                 uint32_t    elementChunkLength = 0;
                     
-                    /* Make sure we do not pass the current element boundary. */
-                    if ((otapClientData.currentPos + dataLen) >= elementEnd)
-                    {
-                        elementChunkLength = elementEnd - otapClientData.currentPos;
-                    }
-                    else
-                    {
-                        elementChunkLength = dataLen;
-                    }
+    //                 /* Make sure we do not pass the current element boundary. */
+    //                 if ((otapClientData.currentPos + dataLen) >= elementEnd)
+    //                 {
+    //                     elementChunkLength = elementEnd - otapClientData.currentPos;
+    //                 }
+    //                 else
+    //                 {
+    //                     elementChunkLength = dataLen;
+    //                 }
                     
-                    /* Handle sub-element payload. */
-                    switch (subElemHdr.tagId)
-                    {
-                    case gBleOtaSubElemTagIdUpgradeImage_c:
-                        /* Immediately after receiving the header check if the image sub-element length is valid
-                         * by trying to start the image upgrade procedure. */
-                        if (currentImgElemRcvdLen == sizeof(subElementHeader_t))
-                        {
-                            uint32_t maxImageLnegth;
+    //                 /* Handle sub-element payload. */
+    //                 switch (subElemHdr.tagId)
+    //                 {
+    //                 case gBleOtaSubElemTagIdUpgradeImage_c:
+    //                     /* Immediately after receiving the header check if the image sub-element length is valid
+    //                      * by trying to start the image upgrade procedure. */
+    //                     if (currentImgElemRcvdLen == sizeof(subElementHeader_t))
+    //                     {
+    //                         uint32_t maxImageLnegth;
                                 
                                 
-                            if(deviceState == deviceState_otapStartedKW40)
-                            {
-                                maxImageLnegth = gFlashParams_MaxImageLength_c;
-                            }
-                            else
-                            {
-                                maxImageLnegth = (1000 * 1024);
-                            }
+    //                         if(deviceState == deviceState_otapStartedKW40)
+    //                         {
+    //                             maxImageLnegth = gFlashParams_MaxImageLength_c;
+    //                         }
+    //                         else
+    //                         {
+    //                             maxImageLnegth = (1000 * 1024);
+    //                         }
                             
-                            if (gOtaSucess_c != OTA_StartImage(subElemHdr.dataLen, maxImageLnegth))
-                            {
-                                /* The sub-element length is invalid, set an error status and reset
-                                 * the image file download process. */
-                                otapStatus = gOtapStatusImageSizeTooLarge_c;
-                                otapClientData.currentPos = 0;
-                                break;
-                            }
-                        }
+    //                         if (gOtaSucess_c != OTA_StartImage(subElemHdr.dataLen, maxImageLnegth))
+    //                         {
+    //                             /* The sub-element length is invalid, set an error status and reset
+    //                              * the image file download process. */
+    //                             otapStatus = gOtapStatusImageSizeTooLarge_c;
+    //                             otapClientData.currentPos = 0;
+    //                             break;
+    //                         }
+    //                     }
                         
-                        /* Upgrade Image Tag - compute the CRC and try to push the chunk to the storage. */
-                        otapClientData.imgComputedCrc = OTA_CrcCompute (pData,
-                                                                        elementChunkLength,
-                                                                        otapClientData.imgComputedCrc);
-                        otaStatus = OTA_PushImageChunk (pData, elementChunkLength, NULL);
-                        if (gOtaSucess_c != otaStatus)
-                        {
-                            otapStatus = gOtapStatusImageStorageError_c;
-                            otapClientData.currentPos = 0;
-                            OTA_CancelImage();
-                            break;
-                        }
-                        break;
+    //                     /* Upgrade Image Tag - compute the CRC and try to push the chunk to the storage. */
+    //                     otapClientData.imgComputedCrc = OTA_CrcCompute (pData,
+    //                                                                     elementChunkLength,
+    //                                                                     otapClientData.imgComputedCrc);
+    //                     otaStatus = OTA_PushImageChunk (pData, elementChunkLength, NULL);
+    //                     if (gOtaSucess_c != otaStatus)
+    //                     {
+    //                         otapStatus = gOtapStatusImageStorageError_c;
+    //                         otapClientData.currentPos = 0;
+    //                         OTA_CancelImage();
+    //                         break;
+    //                     }
+    //                     break;
                         
-                    case gBleOtaSubElemTagIdSectorBitmap_c:
-                        /* Immediately after receiving the header check if the sub-element length is valid. */
-                        if (currentImgElemRcvdLen == sizeof(subElementHeader_t))
-                        {
-                            if (subElemHdr.dataLen != sizeof(otapClientData.imgSectorBitmap))
-                            {
-                                /* The sub-element length is invalid, set an error status and reset
-                                 * the image file download process. */
-                                otapStatus = gOtapStatusInvalidSubElementLength_c;
-                                otapClientData.currentPos = 0;
-                                OTA_CancelImage();
-                                break;
-                            }
-                        }
+    //                 case gBleOtaSubElemTagIdSectorBitmap_c:
+    //                     /* Immediately after receiving the header check if the sub-element length is valid. */
+    //                     if (currentImgElemRcvdLen == sizeof(subElementHeader_t))
+    //                     {
+    //                         if (subElemHdr.dataLen != sizeof(otapClientData.imgSectorBitmap))
+    //                         {
+    //                             /* The sub-element length is invalid, set an error status and reset
+    //                              * the image file download process. */
+    //                             otapStatus = gOtapStatusInvalidSubElementLength_c;
+    //                             otapClientData.currentPos = 0;
+    //                             OTA_CancelImage();
+    //                             break;
+    //                         }
+    //                     }
                         
-                        /* Sector Bitmap Tag - Compute the CRC and copy the received bitmap to the buffer. */
-                        otapClientData.imgComputedCrc = OTA_CrcCompute (pData,
-                                                                        elementChunkLength,
-                                                                        otapClientData.imgComputedCrc);
+    //                     /* Sector Bitmap Tag - Compute the CRC and copy the received bitmap to the buffer. */
+    //                     otapClientData.imgComputedCrc = OTA_CrcCompute (pData,
+    //                                                                     elementChunkLength,
+    //                                                                     otapClientData.imgComputedCrc);
                         
-                        FLib_MemCpy ((uint8_t*)otapClientData.imgSectorBitmap + (currentImgElemRcvdLen - sizeof(subElementHeader_t)),
-                                     pData,
-                                     elementChunkLength);
-                        break;
+    //                     FLib_MemCpy ((uint8_t*)otapClientData.imgSectorBitmap + (currentImgElemRcvdLen - sizeof(subElementHeader_t)),
+    //                                  pData,
+    //                                  elementChunkLength);
+    //                     break;
                         
-                    case gBleOtaSubElemTagIdImageFileCrc_c:
-                        /* Immediately after receiving the header check if the sub-element length is valid. */
-                        if (currentImgElemRcvdLen == sizeof(subElementHeader_t))
-                        {
-                            if (subElemHdr.dataLen != sizeof(otapClientData.imgReceivedCrc))
-                            {
-                                /* The sub-element length is invalid, set an error status and reset
-                                 * the image file download process. */
-                                otapStatus = gOtapStatusInvalidSubElementLength_c;
-                                otapClientData.currentPos = 0;
-                                OTA_CancelImage();
-                                break;
-                            }
-                        }
+    //                 case gBleOtaSubElemTagIdImageFileCrc_c:
+    //                     /* Immediately after receiving the header check if the sub-element length is valid. */
+    //                     if (currentImgElemRcvdLen == sizeof(subElementHeader_t))
+    //                     {
+    //                         if (subElemHdr.dataLen != sizeof(otapClientData.imgReceivedCrc))
+    //                         {
+    //                             /* The sub-element length is invalid, set an error status and reset
+    //                              * the image file download process. */
+    //                             otapStatus = gOtapStatusInvalidSubElementLength_c;
+    //                             otapClientData.currentPos = 0;
+    //                             OTA_CancelImage();
+    //                             break;
+    //                         }
+    //                     }
                         
-                        /* CRC Tag - Just copy the received CRC to the buffer. */
-                        FLib_MemCpy ((uint8_t*)(&otapClientData.imgReceivedCrc) + (currentImgElemRcvdLen - sizeof(subElementHeader_t)),
-                                     pData,
-                                     elementChunkLength);
-                        break;
+    //                     /* CRC Tag - Just copy the received CRC to the buffer. */
+    //                     FLib_MemCpy ((uint8_t*)(&otapClientData.imgReceivedCrc) + (currentImgElemRcvdLen - sizeof(subElementHeader_t)),
+    //                                  pData,
+    //                                  elementChunkLength);
+    //                     break;
                         
-                    default:
-                        /* Unknown sub-element type, just compute the CRC over it. */
-                        otapClientData.imgComputedCrc = OTA_CrcCompute (pData,
-                                                                        elementChunkLength,
-                                                                        otapClientData.imgComputedCrc);
-                        break;
-                    };
+    //                 default:
+    //                     /* Unknown sub-element type, just compute the CRC over it. */
+    //                     otapClientData.imgComputedCrc = OTA_CrcCompute (pData,
+    //                                                                     elementChunkLength,
+    //                                                                     otapClientData.imgComputedCrc);
+    //                     break;
+    //                 };
                     
-                    if (otapStatus != gOtapStatusSuccess_c)
-                    {
-                        /* If an error has occurred then break the loop. */
-                        break;
-                    }
+    //                 if (otapStatus != gOtapStatusSuccess_c)
+    //                 {
+    //                     /* If an error has occurred then break the loop. */
+    //                     break;
+    //                 }
                     
-                    otapClientData.currentPos += elementChunkLength;
-                    currentImgElemRcvdLen += elementChunkLength;
-                    pData += elementChunkLength;
-                    dataLen -= elementChunkLength;
+    //                 otapClientData.currentPos += elementChunkLength;
+    //                 currentImgElemRcvdLen += elementChunkLength;
+    //                 pData += elementChunkLength;
+    //                 dataLen -= elementChunkLength;
                     
-                    /* If this element has been completely received then reset the current element
-                     * received length to trigger the reception of the next sub-element. */
-                    if (otapClientData.currentPos >= elementEnd)
-                    {
-                        currentImgElemRcvdLen = 0;
-                    }
-                }
-            }
-        } /* while (dataLen) */
-    }
+    //                 /* If this element has been completely received then reset the current element
+    //                  * received length to trigger the reception of the next sub-element. */
+    //                 if (otapClientData.currentPos >= elementEnd)
+    //                 {
+    //                     currentImgElemRcvdLen = 0;
+    //                 }
+    //             }
+    //         }
+    //     } /* while (dataLen) */
+    // }
     
-    if (otapStatus == gOtapStatusSuccess_c)
-    {
-        /* If the chunk has been successfully processed increase the expected sequence number. */
-        otapClientData.chunkSeqNum += 1;
+    // if (otapStatus == gOtapStatusSuccess_c)
+    // {
+    //     /* If the chunk has been successfully processed increase the expected sequence number. */
+    //     otapClientData.chunkSeqNum += 1;
         
-        /* Check if the block and/or image transfer is complete */
-        if (otapClientData.chunkSeqNum >= otapClientData.totalBlockChunks)
-        {
-            /* If the image transfer is complete check the image CRC then
-             * commit the image and set the bootloader flags. */
-            if (otapClientData.currentPos >= otapClientData.imgSize)
-            {
-                if (otapClientData.imgComputedCrc != otapClientData.imgReceivedCrc)
-                {
-                    otapStatus = gOtapStatusInvalidImageCrc_c;
-                    otapClientData.currentPos = 0;
-                    OTA_CancelImage();
-                }
-                else if (gOtaSucess_c != OTA_CommitImage(otapClientData.imgSectorBitmap))
-                {
-                    otapStatus = gOtapStatusImageStorageError_c;
-                    otapClientData.currentPos = 0;
-                    OTA_CancelImage();
-                }
-                else
-                {
-                    /* The new image was successfully committed, set the bootloader new image flags,
-                     * set the image transfer state as downloaded and send an image transfer complete
-                     * message to the peer. */
+    //     /* Check if the block and/or image transfer is complete */
+    //     if (otapClientData.chunkSeqNum >= otapClientData.totalBlockChunks)
+    //     {
+    //         /* If the image transfer is complete check the image CRC then
+    //          * commit the image and set the bootloader flags. */
+    //         if (otapClientData.currentPos >= otapClientData.imgSize)
+    //         {
+    //             if (otapClientData.imgComputedCrc != otapClientData.imgReceivedCrc)
+    //             {
+    //                 otapStatus = gOtapStatusInvalidImageCrc_c;
+    //                 otapClientData.currentPos = 0;
+    //                 OTA_CancelImage();
+    //             }
+    //             else if (gOtaSucess_c != OTA_CommitImage(otapClientData.imgSectorBitmap))
+    //             {
+    //                 otapStatus = gOtapStatusImageStorageError_c;
+    //                 otapClientData.currentPos = 0;
+    //                 OTA_CancelImage();
+    //             }
+    //             else
+    //             {
+    //                 /* The new image was successfully committed, set the bootloader new image flags,
+    //                  * set the image transfer state as downloaded and send an image transfer complete
+    //                  * message to the peer. */
                     
-                    OtapClient_Complete();
+    //                 OtapClient_Complete();
                     
-                    otapClientData.state = mOtapClientStateImageDownloadComplete_c;
-                    otapCommand.cmdId = gOtapCmdIdImageTransferComplete_c;
-                    FLib_MemCpy((uint8_t*)otapCommand.cmd.imgTransComplete.imageId, otapClientData.imgId, sizeof(otapCommand.cmd.imgTransComplete.imageId));
-                    otapCommand.cmd.imgTransComplete.status = gOtapStatusSuccess_c;
+    //                 otapClientData.state = mOtapClientStateImageDownloadComplete_c;
+    //                 otapCommand.cmdId = gOtapCmdIdImageTransferComplete_c;
+    //                 FLib_MemCpy((uint8_t*)otapCommand.cmd.imgTransComplete.imageId, otapClientData.imgId, sizeof(otapCommand.cmd.imgTransComplete.imageId));
+    //                 otapCommand.cmd.imgTransComplete.status = gOtapStatusSuccess_c;
                     
-                    bleResult = OtapCS_SendCommandToOtapServer (service_otap,
-                                                                (void*)(&otapCommand),
-                                                                cmdIdToCmdLengthTable[gOtapCmdIdImageTransferComplete_c]);
-                    if (gBleSuccess_c == bleResult)
-                    {
-                        otapClientData.lastCmdSentToOtapServer = gOtapCmdIdImageTransferComplete_c;
-                    }
-                    else
-                    {
-                        /*! A BLE error has occurred - Trigger the bootloader and reset now.
-                         *  Do not wait for the Image Transfer Complete Confirmation. */                        
-                        Gap_Disconnect(deviceId);
-                        ResetMCU ();
-                    }
-                }
-            }
-            else
-            {
-                /* If just the current block is complete ask for another block. */
-                OtapClient_ContinueImageDownload (deviceId);
-            }
-        }
-    }
+    //                 bleResult = OtapCS_SendCommandToOtapServer (service_otap,
+    //                                                             (void*)(&otapCommand),
+    //                                                             cmdIdToCmdLengthTable[gOtapCmdIdImageTransferComplete_c]);
+    //                 if (gBleSuccess_c == bleResult)
+    //                 {
+    //                     otapClientData.lastCmdSentToOtapServer = gOtapCmdIdImageTransferComplete_c;
+    //                 }
+    //                 else
+    //                 {
+    //                     /*! A BLE error has occurred - Trigger the bootloader and reset now.
+    //                      *  Do not wait for the Image Transfer Complete Confirmation. */                        
+    //                     Gap_Disconnect(deviceId);
+    //                     ResetMCU ();
+    //                 }
+    //             }
+    //         }
+    //         else
+    //         {
+    //             /* If just the current block is complete ask for another block. */
+    //             OtapClient_ContinueImageDownload (deviceId);
+    //         }
+    //     }
+    // }
     
-    if (otapStatus != gOtapStatusSuccess_c)
-    {        
-        otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
-        otapCommand.cmd.errNotif.cmdId = gOtapCmdIdImageChunk_c;
-        otapCommand.cmd.errNotif.errStatus = otapStatus;
+    // if (otapStatus != gOtapStatusSuccess_c)
+    // {        
+    //     otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
+    //     otapCommand.cmd.errNotif.cmdId = gOtapCmdIdImageChunk_c;
+    //     otapCommand.cmd.errNotif.errStatus = otapStatus;
 
-        bleResult = OtapCS_SendCommandToOtapServer (service_otap,
-                                                    (void*)(&otapCommand),
-                                                    cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
-        if (gBleSuccess_c == bleResult)
-        {
-            otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
-        }
-        else
-        {
-            /*! A BLE error has occurred - Disconnect */
-            Gap_Disconnect (deviceId);
-            OtapClient_Fail();
-            ResetMCU();
-        }
-    }
+    //     bleResult = OtapCS_SendCommandToOtapServer (service_otap,
+    //                                                 (void*)(&otapCommand),
+    //                                                 cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
+    //     if (gBleSuccess_c == bleResult)
+    //     {
+    //         otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
+    //     }
+    //     else
+    //     {
+    //         /*! A BLE error has occurred - Disconnect */
+    //         Gap_Disconnect (deviceId);
+    //         OtapClient_Fail();
+    //         ResetMCU();
+    //     }
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -2102,120 +2140,120 @@ static void OtapClient_HandleDataChunk (deviceId_t deviceId, uint16_t length, ui
 
 static void OtapClient_HandleNewImageNotification (deviceId_t deviceId, uint16_t length, uint8_t* pValue)
 {
-    otapCommand_t otapCommand;
-    bleResult_t   bleResult;
-    otapStatus_t otapStatus = gOtapStatusSuccess_c;
-    otapCommand_t*  pRemoteCmd = (otapCommand_t*)pValue;
+    // otapCommand_t otapCommand;
+    // bleResult_t   bleResult;
+    // otapStatus_t otapStatus = gOtapStatusSuccess_c;
+    // otapCommand_t*  pRemoteCmd = (otapCommand_t*)pValue;
     
-    /* Check the command length and parameters. */
-    if (length != cmdIdToCmdLengthTable[gOtapCmdIdNewImageNotification_c])
-    {
-        otapStatus = gOtapStatusInvalidCommandLength_c;
-    }
-    else if (pRemoteCmd->cmd.newImgNotif.imageFileSize <= (sizeof(bleOtaImageFileHeader_t) + sizeof(subElementHeader_t)))
-    {
-        otapStatus = gOtapStatusInvalidImageFileSize_c;
-    }
-    else
-    {
-        switch (otapClientData.state)
-        {
-        case mOtapClientStateIdle_c:
-            //if (OtapClient_IsRemoteImageNewer(pRemoteCmd->cmd.newImgNotif.imageId, pRemoteCmd->cmd.newImgNotif.imageVersion))
-            if(OtapClient_CheckRemoteID(pRemoteCmd->cmd.newImgNotif.imageId))
-            {
-                /* If a response for a New Image Info Request is expected from the OTAP Server simply ignore the
-                 * New Image Notification. */
-                if (otapClientData.lastCmdSentToOtapServer != gOtapCmdIdNewImageInfoRequest_c)
-                {
-                    /* Set up the Client to receive the image file. */
-                    otapClientData.peerOtapServer = deviceId;
-                    FLib_MemCpy(otapClientData.imgId, pRemoteCmd->cmd.newImgNotif.imageId, gOtap_ImageIdFieldSize_c);
-                    FLib_MemCpy(otapClientData.imgVer, pRemoteCmd->cmd.newImgNotif.imageVersion, gOtap_ImageVersionFieldSize_c);
-                    otapClientData.imgSize = pRemoteCmd->cmd.newImgNotif.imageFileSize;
-                    otapClientData.currentPos = 0;
-                    otapClientData.chunkSize = 0;
-                    otapClientData.chunkSeqNum = 0;
-                    otapClientData.totalBlockChunks = 0;
-                    otapClientData.totalBlockSize = 0;
+    // /* Check the command length and parameters. */
+    // if (length != cmdIdToCmdLengthTable[gOtapCmdIdNewImageNotification_c])
+    // {
+    //     otapStatus = gOtapStatusInvalidCommandLength_c;
+    // }
+    // else if (pRemoteCmd->cmd.newImgNotif.imageFileSize <= (sizeof(bleOtaImageFileHeader_t) + sizeof(subElementHeader_t)))
+    // {
+    //     otapStatus = gOtapStatusInvalidImageFileSize_c;
+    // }
+    // else
+    // {
+    //     switch (otapClientData.state)
+    //     {
+    //     case mOtapClientStateIdle_c:
+    //         //if (OtapClient_IsRemoteImageNewer(pRemoteCmd->cmd.newImgNotif.imageId, pRemoteCmd->cmd.newImgNotif.imageVersion))
+    //         if(OtapClient_CheckRemoteID(pRemoteCmd->cmd.newImgNotif.imageId))
+    //         {
+    //             /* If a response for a New Image Info Request is expected from the OTAP Server simply ignore the
+    //              * New Image Notification. */
+    //             if (otapClientData.lastCmdSentToOtapServer != gOtapCmdIdNewImageInfoRequest_c)
+    //             {
+    //                 /* Set up the Client to receive the image file. */
+    //                 otapClientData.peerOtapServer = deviceId;
+    //                 FLib_MemCpy(otapClientData.imgId, pRemoteCmd->cmd.newImgNotif.imageId, gOtap_ImageIdFieldSize_c);
+    //                 FLib_MemCpy(otapClientData.imgVer, pRemoteCmd->cmd.newImgNotif.imageVersion, gOtap_ImageVersionFieldSize_c);
+    //                 otapClientData.imgSize = pRemoteCmd->cmd.newImgNotif.imageFileSize;
+    //                 otapClientData.currentPos = 0;
+    //                 otapClientData.chunkSize = 0;
+    //                 otapClientData.chunkSeqNum = 0;
+    //                 otapClientData.totalBlockChunks = 0;
+    //                 otapClientData.totalBlockSize = 0;
                     
-                    /* Change the Client state to Downloading and trigger the download. */
-                    otapClientData.state = mOtapClientStateDownloadingImage_c;
-                    OtapClient_ContinueImageDownload (deviceId);
-                }
-            }
-            else
-            {
-                OtapClient_Fail();
-                ResetMCU();
-            }
-            /* If the remote image is not newer than the current image simply ignore the New Image Notification */
-            break;
+    //                 /* Change the Client state to Downloading and trigger the download. */
+    //                 otapClientData.state = mOtapClientStateDownloadingImage_c;
+    //                 OtapClient_ContinueImageDownload (deviceId);
+    //             }
+    //         }
+    //         else
+    //         {
+    //             OtapClient_Fail();
+    //             ResetMCU();
+    //         }
+    //         /* If the remote image is not newer than the current image simply ignore the New Image Notification */
+    //         break;
      
-        case mOtapClientStateDownloadingImage_c:            /* Fallthrough */
-        case mOtapClientStateImageDownloadComplete_c:
-            /* Simply ignore the message if an image is being downloaded or
-             * an image download is complete. */
-            break;
+    //     case mOtapClientStateDownloadingImage_c:            /* Fallthrough */
+    //     case mOtapClientStateImageDownloadComplete_c:
+    //         /* Simply ignore the message if an image is being downloaded or
+    //          * an image download is complete. */
+    //         break;
             
-        default:
-            /* Some kind of internal error has occurred. Reset the
-             * client state to Idle and act as if the state was Idle. */
-            otapClientData.state = mOtapClientStateIdle_c;
-            //if (OtapClient_IsRemoteImageNewer(pRemoteCmd->cmd.newImgNotif.imageId, pRemoteCmd->cmd.newImgNotif.imageVersion))
-            if(OtapClient_CheckRemoteID(pRemoteCmd->cmd.newImgNotif.imageId))
-            {
-                /* If a response for a New Image Info Request is expected from the OTAp Server simply ignore the
-                 * New Image Notification. */
-                if (otapClientData.lastCmdSentToOtapServer != gOtapCmdIdNewImageInfoRequest_c)
-                {
-                    /* Set up the Client to receive the image file. */
-                    otapClientData.peerOtapServer = deviceId;
-                    FLib_MemCpy(otapClientData.imgId, pRemoteCmd->cmd.newImgNotif.imageId, gOtap_ImageIdFieldSize_c);
-                    FLib_MemCpy(otapClientData.imgVer, pRemoteCmd->cmd.newImgNotif.imageVersion, gOtap_ImageVersionFieldSize_c);
-                    otapClientData.imgSize = pRemoteCmd->cmd.newImgNotif.imageFileSize;
-                    otapClientData.currentPos = 0;
-                    otapClientData.chunkSize = 0;
-                    otapClientData.chunkSeqNum = 0;
-                    otapClientData.totalBlockChunks = 0;
-                    otapClientData.totalBlockSize = 0;
+    //     default:
+    //          Some kind of internal error has occurred. Reset the
+    //          * client state to Idle and act as if the state was Idle. 
+    //         otapClientData.state = mOtapClientStateIdle_c;
+    //         //if (OtapClient_IsRemoteImageNewer(pRemoteCmd->cmd.newImgNotif.imageId, pRemoteCmd->cmd.newImgNotif.imageVersion))
+    //         if(OtapClient_CheckRemoteID(pRemoteCmd->cmd.newImgNotif.imageId))
+    //         {
+    //             /* If a response for a New Image Info Request is expected from the OTAp Server simply ignore the
+    //              * New Image Notification. */
+    //             if (otapClientData.lastCmdSentToOtapServer != gOtapCmdIdNewImageInfoRequest_c)
+    //             {
+    //                 /* Set up the Client to receive the image file. */
+    //                 otapClientData.peerOtapServer = deviceId;
+    //                 FLib_MemCpy(otapClientData.imgId, pRemoteCmd->cmd.newImgNotif.imageId, gOtap_ImageIdFieldSize_c);
+    //                 FLib_MemCpy(otapClientData.imgVer, pRemoteCmd->cmd.newImgNotif.imageVersion, gOtap_ImageVersionFieldSize_c);
+    //                 otapClientData.imgSize = pRemoteCmd->cmd.newImgNotif.imageFileSize;
+    //                 otapClientData.currentPos = 0;
+    //                 otapClientData.chunkSize = 0;
+    //                 otapClientData.chunkSeqNum = 0;
+    //                 otapClientData.totalBlockChunks = 0;
+    //                 otapClientData.totalBlockSize = 0;
                     
-                    /* Change the Client state to Downloading and trigger the download. */
-                    otapClientData.state = mOtapClientStateDownloadingImage_c;
-                    OtapClient_ContinueImageDownload (deviceId);
-                }
-            }
-            else
-            {
-                OtapClient_Fail();
-                ResetMCU();
-            }
-            /* If the remote image is not newer than the current image simply ignore the New Image Notification */
-            break;
-        };
-    }
+    //                 /* Change the Client state to Downloading and trigger the download. */
+    //                 otapClientData.state = mOtapClientStateDownloadingImage_c;
+    //                 OtapClient_ContinueImageDownload (deviceId);
+    //             }
+    //         }
+    //         else
+    //         {
+    //             OtapClient_Fail();
+    //             ResetMCU();
+    //         }
+    //         /* If the remote image is not newer than the current image simply ignore the New Image Notification */
+    //         break;
+    //     };
+    // }
         
-    if (otapStatus != gOtapStatusSuccess_c)
-    {
-        otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
-        otapCommand.cmd.errNotif.cmdId = pValue[0];
-        otapCommand.cmd.errNotif.errStatus = otapStatus;
+    // if (otapStatus != gOtapStatusSuccess_c)
+    // {
+    //     otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
+    //     otapCommand.cmd.errNotif.cmdId = pValue[0];
+    //     otapCommand.cmd.errNotif.errStatus = otapStatus;
 
-        bleResult = OtapCS_SendCommandToOtapServer (service_otap,
-                                                    (void*)(&otapCommand),
-                                                    cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
-        if (gBleSuccess_c == bleResult)
-        {
-            otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
-        }
-        else
-        {
-            /*! A BLE error has occured - Disconnect */
-            Gap_Disconnect (deviceId);
-            OtapClient_Fail();
-            ResetMCU();
-        }
-    }
+    //     bleResult = OtapCS_SendCommandToOtapServer (service_otap,
+    //                                                 (void*)(&otapCommand),
+    //                                                 cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
+    //     if (gBleSuccess_c == bleResult)
+    //     {
+    //         otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
+    //     }
+    //     else
+    //     {
+    //         /*! A BLE error has occured - Disconnect */
+    //         Gap_Disconnect (deviceId);
+    //         OtapClient_Fail();
+    //         ResetMCU();
+    //     }
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -2224,109 +2262,109 @@ static void OtapClient_HandleNewImageNotification (deviceId_t deviceId, uint16_t
 
 static void OtapClient_HandleNewImageInfoResponse (deviceId_t deviceId, uint16_t length, uint8_t* pValue)
 {
-    otapCommand_t otapCommand;
-    bleResult_t   bleResult;
-    otapStatus_t otapStatus = gOtapStatusSuccess_c;
-    otapCommand_t*  pRemoteCmd = (otapCommand_t*)pValue;
+    // otapCommand_t otapCommand;
+    // bleResult_t   bleResult;
+    // otapStatus_t otapStatus = gOtapStatusSuccess_c;
+    // otapCommand_t*  pRemoteCmd = (otapCommand_t*)pValue;
     
-    /* Check the command length and parameters. */
-    if (length != cmdIdToCmdLengthTable[gOtapCmdIdNewImageInfoResponse_c])
-    {
-        otapStatus = gOtapStatusInvalidCommandLength_c;
-    }
-    else if (pRemoteCmd->cmd.newImgInfoRes.imageFileSize <= (sizeof(bleOtaImageFileHeader_t) + sizeof(subElementHeader_t)))
-    {
-        otapStatus = gOtapStatusInvalidImageFileSize_c;
-    }
-    else
-    {
-        switch (otapClientData.state)
-        {
-        case mOtapClientStateIdle_c:
-            if(OtapClient_CheckRemoteID(pRemoteCmd->cmd.newImgInfoRes.imageId))
-            {
-                /* Set up the Client to receive the image file. */
-                otapClientData.peerOtapServer = deviceId;
-                FLib_MemCpy(otapClientData.imgId, pRemoteCmd->cmd.newImgInfoRes.imageId, gOtap_ImageIdFieldSize_c);
-                FLib_MemCpy(otapClientData.imgVer, pRemoteCmd->cmd.newImgInfoRes.imageVersion, gOtap_ImageVersionFieldSize_c);
-                otapClientData.imgSize = pRemoteCmd->cmd.newImgInfoRes.imageFileSize;
-                otapClientData.currentPos = 0;
-                otapClientData.chunkSize = 0;
-                otapClientData.chunkSeqNum = 0;
-                otapClientData.totalBlockChunks = 0;
-                otapClientData.totalBlockSize = 0;
+    // /* Check the command length and parameters. */
+    // if (length != cmdIdToCmdLengthTable[gOtapCmdIdNewImageInfoResponse_c])
+    // {
+    //     otapStatus = gOtapStatusInvalidCommandLength_c;
+    // }
+    // else if (pRemoteCmd->cmd.newImgInfoRes.imageFileSize <= (sizeof(bleOtaImageFileHeader_t) + sizeof(subElementHeader_t)))
+    // {
+    //     otapStatus = gOtapStatusInvalidImageFileSize_c;
+    // }
+    // else
+    // {
+    //     switch (otapClientData.state)
+    //     {
+    //     case mOtapClientStateIdle_c:
+    //         if(OtapClient_CheckRemoteID(pRemoteCmd->cmd.newImgInfoRes.imageId))
+    //         {
+    //             /* Set up the Client to receive the image file. */
+    //             otapClientData.peerOtapServer = deviceId;
+    //             FLib_MemCpy(otapClientData.imgId, pRemoteCmd->cmd.newImgInfoRes.imageId, gOtap_ImageIdFieldSize_c);
+    //             FLib_MemCpy(otapClientData.imgVer, pRemoteCmd->cmd.newImgInfoRes.imageVersion, gOtap_ImageVersionFieldSize_c);
+    //             otapClientData.imgSize = pRemoteCmd->cmd.newImgInfoRes.imageFileSize;
+    //             otapClientData.currentPos = 0;
+    //             otapClientData.chunkSize = 0;
+    //             otapClientData.chunkSeqNum = 0;
+    //             otapClientData.totalBlockChunks = 0;
+    //             otapClientData.totalBlockSize = 0;
                 
-                /* Change the Client state to Downloading and trigger the download. */
-                otapClientData.state = mOtapClientStateDownloadingImage_c;
-                OtapClient_ContinueImageDownload (deviceId);
-            }
-            else
-            {
-                OtapClient_Fail();
-                ResetMCU();
-            }
-            /* If the remote image is not newer than the current image simply ignore the New Image Info Response */
-            break;
+    //             /* Change the Client state to Downloading and trigger the download. */
+    //             otapClientData.state = mOtapClientStateDownloadingImage_c;
+    //             OtapClient_ContinueImageDownload (deviceId);
+    //         }
+    //         else
+    //         {
+    //             OtapClient_Fail();
+    //             ResetMCU();
+    //         }
+    //         /* If the remote image is not newer than the current image simply ignore the New Image Info Response */
+    //         break;
      
-        case mOtapClientStateDownloadingImage_c:            /* Fallthrough */
-        case mOtapClientStateImageDownloadComplete_c:
-            /* Simply ignore the message if an image is being downloaded or
-             * an image download is complete. */
-            break;
+    //     case mOtapClientStateDownloadingImage_c:            /* Fallthrough */
+    //     case mOtapClientStateImageDownloadComplete_c:
+    //         /* Simply ignore the message if an image is being downloaded or
+    //          * an image download is complete. */
+    //         break;
             
-        default:
-            /* Some kind of internal error has occurred. Reset the
-             * client state to Idle and act as if the state was Idle. */
-            otapClientData.state = mOtapClientStateIdle_c;
-            //if (OtapClient_IsRemoteImageNewer(pRemoteCmd->cmd.newImgInfoRes.imageId, pRemoteCmd->cmd.newImgInfoRes.imageVersion))
-            if(OtapClient_CheckRemoteID(pRemoteCmd->cmd.newImgInfoRes.imageId))
-            {
-                /* Set up the Client to receive the image file. */
-                otapClientData.peerOtapServer = deviceId;
-                FLib_MemCpy(otapClientData.imgId, pRemoteCmd->cmd.newImgInfoRes.imageId, gOtap_ImageIdFieldSize_c);
-                FLib_MemCpy(otapClientData.imgVer, pRemoteCmd->cmd.newImgInfoRes.imageVersion, gOtap_ImageVersionFieldSize_c);
-                otapClientData.imgSize = pRemoteCmd->cmd.newImgInfoRes.imageFileSize;
-                otapClientData.currentPos = 0;
-                otapClientData.chunkSize = 0;
-                otapClientData.chunkSeqNum = 0;
-                otapClientData.totalBlockChunks = 0;
-                otapClientData.totalBlockSize = 0;
+    //     default:
+    //          Some kind of internal error has occurred. Reset the
+    //          * client state to Idle and act as if the state was Idle. 
+    //         otapClientData.state = mOtapClientStateIdle_c;
+    //         //if (OtapClient_IsRemoteImageNewer(pRemoteCmd->cmd.newImgInfoRes.imageId, pRemoteCmd->cmd.newImgInfoRes.imageVersion))
+    //         if(OtapClient_CheckRemoteID(pRemoteCmd->cmd.newImgInfoRes.imageId))
+    //         {
+    //             /* Set up the Client to receive the image file. */
+    //             otapClientData.peerOtapServer = deviceId;
+    //             FLib_MemCpy(otapClientData.imgId, pRemoteCmd->cmd.newImgInfoRes.imageId, gOtap_ImageIdFieldSize_c);
+    //             FLib_MemCpy(otapClientData.imgVer, pRemoteCmd->cmd.newImgInfoRes.imageVersion, gOtap_ImageVersionFieldSize_c);
+    //             otapClientData.imgSize = pRemoteCmd->cmd.newImgInfoRes.imageFileSize;
+    //             otapClientData.currentPos = 0;
+    //             otapClientData.chunkSize = 0;
+    //             otapClientData.chunkSeqNum = 0;
+    //             otapClientData.totalBlockChunks = 0;
+    //             otapClientData.totalBlockSize = 0;
                 
-                /* Change the Client state to Downloading and trigger the download. */
-                otapClientData.state = mOtapClientStateDownloadingImage_c;
-                OtapClient_ContinueImageDownload (deviceId);
-            }
-            else
-            {
-                OtapClient_Fail();
-                ResetMCU();
-            }
-            /* If the remote image is not newer than the current image simply ignore the New Image Info Response */
-            break;
-        };
-    }
+    //             /* Change the Client state to Downloading and trigger the download. */
+    //             otapClientData.state = mOtapClientStateDownloadingImage_c;
+    //             OtapClient_ContinueImageDownload (deviceId);
+    //         }
+    //         else
+    //         {
+    //             OtapClient_Fail();
+    //             ResetMCU();
+    //         }
+    //         /* If the remote image is not newer than the current image simply ignore the New Image Info Response */
+    //         break;
+    //     };
+    // }
         
-    if (otapStatus != gOtapStatusSuccess_c)
-    {
-        otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
-        otapCommand.cmd.errNotif.cmdId = gOtapCmdIdNewImageInfoResponse_c;
-        otapCommand.cmd.errNotif.errStatus = otapStatus;
+    // if (otapStatus != gOtapStatusSuccess_c)
+    // {
+    //     otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
+    //     otapCommand.cmd.errNotif.cmdId = gOtapCmdIdNewImageInfoResponse_c;
+    //     otapCommand.cmd.errNotif.errStatus = otapStatus;
 
-        bleResult = OtapCS_SendCommandToOtapServer (service_otap,
-                                                    (void*)(&otapCommand),
-                                                    cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
-        if (gBleSuccess_c == bleResult)
-        {
-            otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
-        }
-        else
-        {
-            /*! A BLE error has occured - Disconnect */
-            Gap_Disconnect (deviceId);
-            OtapClient_Fail();
-            ResetMCU();
-        }
-    }
+    //     bleResult = OtapCS_SendCommandToOtapServer (service_otap,
+    //                                                 (void*)(&otapCommand),
+    //                                                 cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
+    //     if (gBleSuccess_c == bleResult)
+    //     {
+    //         otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
+    //     }
+    //     else
+    //     {
+    //         /*! A BLE error has occured - Disconnect */
+    //         Gap_Disconnect (deviceId);
+    //         OtapClient_Fail();
+    //         ResetMCU();
+    //     }
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -2335,53 +2373,53 @@ static void OtapClient_HandleNewImageInfoResponse (deviceId_t deviceId, uint16_t
 
 static void OtapClient_HandleErrorNotification (deviceId_t deviceId, uint16_t length, uint8_t* pValue)
 {
-    otapCommand_t otapCommand;
-    bleResult_t   bleResult;
-    otapStatus_t otapStatus = gOtapStatusSuccess_c;
-    otapCommand_t*  pRemoteCmd = (otapCommand_t*)pValue;
+    // otapCommand_t otapCommand;
+    // bleResult_t   bleResult;
+    // otapStatus_t otapStatus = gOtapStatusSuccess_c;
+    // otapCommand_t*  pRemoteCmd = (otapCommand_t*)pValue;
     
-    /* Check the command length and parameters. */
-    if (length == cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c])
-    {
-        /*! Handle remote error statuses here. */
-        if (pRemoteCmd->cmd.errNotif.errStatus < gOtapNumberOfStatuses_c)
-        {
-            /* Handle all errors in the same way, disconnect to restart the download process. */
-            Gap_Disconnect (deviceId);
-            OtapClient_Fail();
-            ResetMCU();
-        }
-        else
-        {
-            otapStatus = gOtapStatusInvalidCommandParameter_c;
-        }
-    }
-    else
-    {
-        otapStatus = gOtapStatusInvalidCommandLength_c;
-    }
+    // /* Check the command length and parameters. */
+    // if (length == cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c])
+    // {
+    //     /*! Handle remote error statuses here. */
+    //     if (pRemoteCmd->cmd.errNotif.errStatus < gOtapNumberOfStatuses_c)
+    //     {
+    //         /* Handle all errors in the same way, disconnect to restart the download process. */
+    //         Gap_Disconnect (deviceId);
+    //         OtapClient_Fail();
+    //         ResetMCU();
+    //     }
+    //     else
+    //     {
+    //         otapStatus = gOtapStatusInvalidCommandParameter_c;
+    //     }
+    // }
+    // else
+    // {
+    //     otapStatus = gOtapStatusInvalidCommandLength_c;
+    // }
         
-    if (otapStatus != gOtapStatusSuccess_c)
-    {
-        otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
-        otapCommand.cmd.errNotif.cmdId = gOtapCmdIdNewImageInfoResponse_c;
-        otapCommand.cmd.errNotif.errStatus = otapStatus;
+    // if (otapStatus != gOtapStatusSuccess_c)
+    // {
+    //     otapCommand.cmdId = gOtapCmdIdErrorNotification_c;
+    //     otapCommand.cmd.errNotif.cmdId = gOtapCmdIdNewImageInfoResponse_c;
+    //     otapCommand.cmd.errNotif.errStatus = otapStatus;
 
-        bleResult = OtapCS_SendCommandToOtapServer (service_otap,
-                                                    (void*)(&otapCommand),
-                                                    cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
-        if (gBleSuccess_c == bleResult)
-        {
-            otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
-        }
-        else
-        {
-            /*! A BLE error has occured - Disconnect */
-            Gap_Disconnect (deviceId);
-            OtapClient_Fail();
-            ResetMCU();
-        }
-    }
+    //     bleResult = OtapCS_SendCommandToOtapServer (service_otap,
+    //                                                 (void*)(&otapCommand),
+    //                                                 cmdIdToCmdLengthTable[gOtapCmdIdErrorNotification_c]);
+    //     if (gBleSuccess_c == bleResult)
+    //     {
+    //         otapClientData.lastCmdSentToOtapServer = gOtapCmdIdErrorNotification_c;
+    //     }
+    //     else
+    //     {
+    //         /*! A BLE error has occured - Disconnect */
+    //         Gap_Disconnect (deviceId);
+    //         OtapClient_Fail();
+    //         ResetMCU();
+    //     }
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -2391,7 +2429,7 @@ static void OtapClient_HandleErrorNotification (deviceId_t deviceId, uint16_t le
 static void OtapClient_HandleNewImageInfoRequestConfirmation (deviceId_t deviceId)
 {
     /* Clear the last command sent to the OTAP Server for which a Confirmation is expected. */
-    otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNoCommand_c;
+    // otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNoCommand_c;
     
     /* Nothing more to do here. If the New Image Info Request Command has reached
      * the OTAP Server then the OTAP Client expects a New Image Info Response */
@@ -2404,7 +2442,7 @@ static void OtapClient_HandleNewImageInfoRequestConfirmation (deviceId_t deviceI
 static void OtapClient_HandleImageBlockRequestConfirmation (deviceId_t deviceId)
 {
     /* Clear the last command sent to the OTAP Server for which a Confirmation is expected. */
-    otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNoCommand_c;
+    // otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNoCommand_c;
     
     /* Nothing more to do here. If the Image Block Request Command has reached
      * the OTAP Server then the OTAP Client expects the requested image chunks
@@ -2417,48 +2455,48 @@ static void OtapClient_HandleImageBlockRequestConfirmation (deviceId_t deviceId)
 
 static void OtapClient_HandleImageTransferCompleteConfirmation (deviceId_t deviceId)
 {
-    otapCommand_t otapCommand;
-    bleResult_t   bleResult;
+    // otapCommand_t otapCommand;
+    // bleResult_t   bleResult;
     
-    /* Clear the last command sent to the OTAP Server for which a Confirmation is expected. */
-    otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNoCommand_c;
+    // /* Clear the last command sent to the OTAP Server for which a Confirmation is expected. */
+    // otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNoCommand_c;
     
-    /* If the image transfer was not successful then the image download state should be Idle.
-     * If it is, try to trigger a new download.
-     * If the Image Transfer Complete Command has reached the OTAP Server and the transfer was succesful 
-     * then the OTAP Client will just wait for the restart and the
-     * bootloader to flash the new image. */
-    if (otapClientData.state == mOtapClientStateIdle_c)
-    {
-        otapCommand.cmdId = gOtapCmdIdNewImageInfoRequest_c;
-        FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageId,
-                     (uint8_t*)otapClientData.currentImgId,
-                     gOtap_ImageIdFieldSize_c);
-        FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageVersion,
-                     (uint8_t*)otapClientData.currentImgVer,
-                     gOtap_ImageVersionFieldSize_c);
+    // /* If the image transfer was not successful then the image download state should be Idle.
+    //  * If it is, try to trigger a new download.
+    //  * If the Image Transfer Complete Command has reached the OTAP Server and the transfer was succesful 
+    //  * then the OTAP Client will just wait for the restart and the
+    //  * bootloader to flash the new image. */
+    // if (otapClientData.state == mOtapClientStateIdle_c)
+    // {
+    //     otapCommand.cmdId = gOtapCmdIdNewImageInfoRequest_c;
+    //     FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageId,
+    //                  (uint8_t*)otapClientData.currentImgId,
+    //                  gOtap_ImageIdFieldSize_c);
+    //     FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageVersion,
+    //                  (uint8_t*)otapClientData.currentImgVer,
+    //                  gOtap_ImageVersionFieldSize_c);
         
-        bleResult = OtapCS_SendCommandToOtapServer (service_otap,
-                                                    (void*)(&otapCommand),
-                                                    cmdIdToCmdLengthTable[gOtapCmdIdNewImageInfoRequest_c]);
-        if (gBleSuccess_c == bleResult)
-        {
-            otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNewImageInfoRequest_c;
-        }
-        else
-        {
-            /*! A BLE error has occured - Disconnect */
-            Gap_Disconnect (deviceId);
-            OtapClient_Fail();
-            ResetMCU();
-        }
-    }
-    else if (otapClientData.state == mOtapClientStateImageDownloadComplete_c)
-    {
-        /* If the image transfer is complete trigger the bootloader and reset the device. */
-        Gap_Disconnect (deviceId);
-        ResetMCU ();
-    }
+    //     bleResult = OtapCS_SendCommandToOtapServer (service_otap,
+    //                                                 (void*)(&otapCommand),
+    //                                                 cmdIdToCmdLengthTable[gOtapCmdIdNewImageInfoRequest_c]);
+    //     if (gBleSuccess_c == bleResult)
+    //     {
+    //         otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNewImageInfoRequest_c;
+    //     }
+    //     else
+    //     {
+    //         /*! A BLE error has occured - Disconnect */
+    //         Gap_Disconnect (deviceId);
+    //         OtapClient_Fail();
+    //         ResetMCU();
+    //     }
+    // }
+    // else if (otapClientData.state == mOtapClientStateImageDownloadComplete_c)
+    // {
+    //     /* If the image transfer is complete trigger the bootloader and reset the device. */
+    //     Gap_Disconnect (deviceId);
+    //     ResetMCU ();
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -2467,17 +2505,17 @@ static void OtapClient_HandleImageTransferCompleteConfirmation (deviceId_t devic
 
 static void OtapClient_HandleErrorNotificationConfirmation (deviceId_t deviceId)
 {
-    /* Clear the last command sent to the OTAP Server for which a Confirmation is expected. */
-    otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNoCommand_c;
+    // /* Clear the last command sent to the OTAP Server for which a Confirmation is expected. */
+    // otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNoCommand_c;
     
-    /* Reset block download parameters to safe values. */
-    otapClientData.chunkSize = 0;
-    otapClientData.chunkSeqNum = 0;
-    otapClientData.totalBlockChunks = 0;
-    otapClientData.totalBlockSize = 0;
+    // /* Reset block download parameters to safe values. */
+    // otapClientData.chunkSize = 0;
+    // otapClientData.chunkSeqNum = 0;
+    // otapClientData.totalBlockChunks = 0;
+    // otapClientData.totalBlockSize = 0;
     
-    /* If an error has occured try to continue the image download from a "safe" point. */
-    OtapClient_ContinueImageDownload (deviceId);
+    // /* If an error has occured try to continue the image download from a "safe" point. */
+    // OtapClient_ContinueImageDownload (deviceId);
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -2505,68 +2543,68 @@ static void OtapClient_HandleStopImageTransferConfirmation (deviceId_t deviceId)
 
 static void OtapClient_HandleConnectionEvent (deviceId_t deviceId)
 {
-    switch (otapClientData.state)
-    {
-    case mOtapClientStateIdle_c:
-        /*! If the OTAP Server has written the CCCD to receive commands fromt he OTAp Client then send a
-         *  new image info request. */
-        if (otapClientData.serverWrittenCccd == TRUE)
-        {
-            otapCommand_t otapCommand;
-            bleResult_t   bleResult;
+    // switch (otapClientData.state)
+    // {
+    // case mOtapClientStateIdle_c:
+    //     /*! If the OTAP Server has written the CCCD to receive commands fromt he OTAp Client then send a
+    //      *  new image info request. */
+    //     if (otapClientData.serverWrittenCccd == TRUE)
+    //     {
+    //         otapCommand_t otapCommand;
+    //         bleResult_t   bleResult;
     
-            otapCommand.cmdId = gOtapCmdIdNewImageInfoRequest_c;
-            FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageId,
-                         (uint8_t*)imageIdAll,
-                         gOtap_ImageIdFieldSize_c);
-            FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageVersion,
-                         (uint8_t*)otapClientData.currentImgVer,
-                         gOtap_ImageVersionFieldSize_c);
+    //         otapCommand.cmdId = gOtapCmdIdNewImageInfoRequest_c;
+    //         FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageId,
+    //                      (uint8_t*)imageIdAll,
+    //                      gOtap_ImageIdFieldSize_c);
+    //         FLib_MemCpy (otapCommand.cmd.newImgInfoReq.currentImageVersion,
+    //                      (uint8_t*)otapClientData.currentImgVer,
+    //                      gOtap_ImageVersionFieldSize_c);
             
-            bleResult = OtapCS_SendCommandToOtapServer (service_otap,
-                                                        (void*)(&otapCommand),
-                                                        cmdIdToCmdLengthTable[gOtapCmdIdNewImageInfoRequest_c]);
-            if (gBleSuccess_c == bleResult)
-            {
-                otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNewImageInfoRequest_c;
-                otapClientData.serverWrittenCccd = TRUE;
-            }
-            else
-            {
-                /*! A BLE error has occured - Disconnect */
-                Gap_Disconnect (deviceId);
-                OtapClient_Fail();
-                ResetMCU();
-            }
-        }
-        break;
-    case  mOtapClientStateDownloadingImage_c:
-        /*! If the state is Downloading try to continue the download from where it was left off.
-         *  Check if the appropriate server is connected first. */
-        if (otapClientData.peerOtapServer == deviceId)
-        {
-            /* Reset block download parameters to safe values. */
-            otapClientData.chunkSize = 0;
-            otapClientData.chunkSeqNum = 0;
-            otapClientData.totalBlockChunks = 0;
-            otapClientData.totalBlockSize = 0;
+    //         bleResult = OtapCS_SendCommandToOtapServer (service_otap,
+    //                                                     (void*)(&otapCommand),
+    //                                                     cmdIdToCmdLengthTable[gOtapCmdIdNewImageInfoRequest_c]);
+    //         if (gBleSuccess_c == bleResult)
+    //         {
+    //             otapClientData.lastCmdSentToOtapServer = gOtapCmdIdNewImageInfoRequest_c;
+    //             otapClientData.serverWrittenCccd = TRUE;
+    //         }
+    //         else
+    //         {
+    //             /*! A BLE error has occured - Disconnect */
+    //             Gap_Disconnect (deviceId);
+    //             OtapClient_Fail();
+    //             ResetMCU();
+    //         }
+    //     }
+    //     break;
+    // case  mOtapClientStateDownloadingImage_c:
+    //     /*! If the state is Downloading try to continue the download from where it was left off.
+    //      *  Check if the appropriate server is connected first. */
+    //     if (otapClientData.peerOtapServer == deviceId)
+    //     {
+    //         /* Reset block download parameters to safe values. */
+    //         otapClientData.chunkSize = 0;
+    //         otapClientData.chunkSeqNum = 0;
+    //         otapClientData.totalBlockChunks = 0;
+    //         otapClientData.totalBlockSize = 0;
             
-            OtapClient_ContinueImageDownload (deviceId);
-        }
-        break;
-    case mOtapClientStateImageDownloadComplete_c:
-        /*! If the image download is complete try to set the new image flag
-         *  and reset the MCU for the bootloader ot kick in. */
-        Gap_Disconnect (deviceId);
-        OTA_SetNewImageFlag ();
-        ResetMCU ();
-        break;
-    default:
-        /* Some kind of internal error has occurred. Reset the
-         * client state to Idle and act as if the state was Idle. */
-        otapClientData.state = mOtapClientStateIdle_c;
-        break;
-    };
+    //         OtapClient_ContinueImageDownload (deviceId);
+    //     }
+    //     break;
+    // case mOtapClientStateImageDownloadComplete_c:
+    //     /*! If the image download is complete try to set the new image flag
+    //      *  and reset the MCU for the bootloader ot kick in. */
+    //     Gap_Disconnect (deviceId);
+    //     OTA_SetNewImageFlag ();
+    //     ResetMCU ();
+    //     break;
+    // default:
+    //     /* Some kind of internal error has occurred. Reset the
+    //      * client state to Idle and act as if the state was Idle. */
+    //     otapClientData.state = mOtapClientStateIdle_c;
+    //     break;
+    // };
 }
 
 /////////////////////////////////////////////////////////////////////////////////////
@@ -2577,13 +2615,13 @@ static void OtapClient_HandleDisconnectionEvent(deviceId_t deviceId)
 {
     /* Check if the peer OTAP server was disconnected and if so reset block download
      * parameters to safe values. */
-    if (otapClientData.peerOtapServer == deviceId)
-    {
-        otapClientData.chunkSize = 0;
-        otapClientData.chunkSeqNum = 0;
-        otapClientData.totalBlockChunks = 0;
-        otapClientData.totalBlockSize = 0;
-    }
+    // if (otapClientData.peerOtapServer == deviceId)
+    // {
+    //     otapClientData.chunkSize = 0;
+    //     otapClientData.chunkSeqNum = 0;
+    //     otapClientData.totalBlockChunks = 0;
+    //     otapClientData.totalBlockSize = 0;
+    // }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////

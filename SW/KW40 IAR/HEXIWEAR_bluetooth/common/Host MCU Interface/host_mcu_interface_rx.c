@@ -38,7 +38,8 @@
 #include "health_service.h"
 #include "alert_service.h"
 #include "appMode_service.h"
-#include "PWR_Interface.h" 
+#include "PWR_Interface.h"
+#include "message_service.h" 
 
 /************************************************************************************
 *************************************************************************************
@@ -156,6 +157,14 @@ static void HostInterface_RxPacketHandler(hostInterface_packet_t * pHostInterfac
         case packetType_alertOut:
         {
             Als_RecordOutAlert(pHostInterface_packet->data);
+            break;   
+        }
+        
+        /////////////////////////////////////////////////////////////////////////////
+        // Message Service
+        case packetType_messageOut:
+        {
+            Msg_RecordOutMessage(pHostInterface_packet->data);
             break;   
         }
         

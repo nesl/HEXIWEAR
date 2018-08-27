@@ -96,3 +96,11 @@ UUID128(uuid_char_otap_state,           0xE0, 0x1C, 0x4B, 0x5E, 0x1E, 0xEB, 0xA1
 #define gBleCustom_AppModeUUID_d                0x2041
 #define gBleCustom_AppModeLength_d              1
 
+/*! NESL Added Message Service */
+#define gBleCustom_MessageService_d             0x2100
+
+#define gBleCustom_MessageInUUID_d                0x2101
+#define gBleCustom_MessageInLength_d              20
+
+#define gBleCustom_MessageOutUUID_d               0x2102
+#define gBleCustom_MessageOutLength_d             20
