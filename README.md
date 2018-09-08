@@ -36,3 +36,10 @@ The modified version of firmware is kept within this repo.
 Follow the official Mbed CLI tutorial and import the KW40z driver. Then replace
 the files with the those inside this repo.
 
+## Packet Format
+The payload of `Message` packet is 20-byte. The first byte is always the length of payload excluding this
+first byte. The remaining bytes are the actual payload. The Mbed driver handles this for you if you use
+the added function to communicate. However, the BLE client must be aware of this format to handle the data
+correctly.
+
+
