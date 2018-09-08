@@ -18,4 +18,21 @@ servers. You can download iOS and Android apps for free on Google Play.
 Visit the official [Hexiwear website](http://www.hexiwear.com/) to learn more 
 about it. The “Getting Started” video is an excellent place to start. 
 
+## NESL Modification to the Software
+To facilitate the process of students starting a project, a more general message
+passing mechanism over BLE is proposed. In short, a new `Message` service has
+been added to HEXIWEAR. To implement this new service, changes have been made
+to the BLE firmware of HEXIWEAR and also the Mbed driver at the Application
+Processor side.
+
+ 
+## How to setup the toolchain
+### BLE Chip Toolchain
+Just follow this guide by HEXIWEAR official: https://github.com/nesl/HEXIWEAR/blob/master/documentation/HEXIWEAR%20Setting%20Up%20Toolchain%20for%20KW40.pdf
+
+The modified version of firmware is kept within this repo.
+
+### AP Mbed Toolchain
+Follow the official Mbed CLI tutorial and import the KW40z driver. Then replace
+the files with the those inside this repo.
 
